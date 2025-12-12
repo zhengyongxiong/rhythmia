@@ -7,3 +7,14 @@ export interface BeatPattern {
     bpmSchedule?: { timeMinute: number; bpm: number }[] // Ramp up/down
     description: string
 }
+
+// Bluetooth connection states
+export type BluetoothConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error'
+
+// Bluetooth device configuration
+export interface BluetoothDrumConfig {
+    deviceName: string
+    serviceUUID: string
+    rxCharUUID: string
+    txCharUUID: string
+}

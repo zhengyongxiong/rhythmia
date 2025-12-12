@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { ArrowLeft, Brain, Square, Play } from 'lucide-react'
+import { ArrowLeft, Brain, Square, Play, Bluetooth, BluetoothConnected, AlertCircle } from 'lucide-react'
 import { useDevice } from '../features/device/DeviceContext'
 import { useLiveMetrics } from '../features/hrv/useLiveMetrics'
 import { generateBeatPatternFromHRV } from '../features/beat/beatGenerator'
@@ -10,10 +10,20 @@ import { type BeatPattern, type TrainingGoal } from '../features/beat/types'
 export default function BeatTrainerPage() {
     const { isConnected } = useDevice()
     const { hrv } = useLiveMetrics()
-    const { isPlaying, start, stop } = useBeatPlayer()
+    const {
+        isPlaying,
+        start,
+        stop,
+        bluetoothState,
+        bluetoothDeviceName,
+        connectBluetooth,
+        disconnectBluetooth,
+        isBluetoothSupported
+    } = useBeatPlayer()
 
     const [goal, setGoal] = useState<TrainingGoal>('relax')
     const [pattern, setPattern] = useState<BeatPattern | null>(null)
+    const [bluetoothError, setBluetoothError] = useState<string | null>(null)
 
     // Redirect if not connected
     if (!isConnected) {
@@ -32,6 +42,26 @@ export default function BeatTrainerPage() {
             stop()
         } else if (pattern) {
             start(pattern)
+        }
+    }
+
+    const handleBluetoothConnect = async () => {
+        setBluetoothError(null)
+        try {
+            await connectBluetooth()
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to connect to Bluetooth device'
+            setBluetoothError(message)
+            console.error('Bluetooth connection error:', error)
+        }
+    }
+
+    const handleBluetoothDisconnect = async () => {
+        try {
+            await disconnectBluetooth()
+            setBluetoothError(null)
+        } catch (error) {
+            console.error('Bluetooth disconnection error:', error)
         }
     }
 
@@ -63,6 +93,62 @@ export default function BeatTrainerPage() {
                     <p className="text-sm text-gray-400 mt-1">
                         {hrv.rmssd < 20 ? 'High arousal/stress detected' : hrv.rmssd > 50 ? 'Relaxed state detected' : 'Moderate state'}
                     </p>
+                </div>
+
+                {/* Bluetooth Connection */}
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            {bluetoothState === 'connected' ? (
+                                <BluetoothConnected className="w-5 h-5 text-blue-600" />
+                            ) : (
+                                <Bluetooth className="w-5 h-5 text-gray-400" />
+                            )}
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-700">
+                                    {bluetoothState === 'connected' ? 'Drum Connected' : 'Connect Drum Device'}
+                                </h3>
+                                {bluetoothDeviceName && (
+                                    <p className="text-xs text-gray-500">{bluetoothDeviceName}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {isBluetoothSupported ? (
+                            <button
+                                onClick={bluetoothState === 'connected' ? handleBluetoothDisconnect : handleBluetoothConnect}
+                                disabled={bluetoothState === 'connecting'}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${bluetoothState === 'connected'
+                                        ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                        : bluetoothState === 'connecting'
+                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                                    }`}
+                            >
+                                {bluetoothState === 'connecting' ? 'Connecting...' : bluetoothState === 'connected' ? 'Disconnect' : 'Connect'}
+                            </button>
+                        ) : (
+                            <div className="flex items-center gap-2 text-xs text-amber-600">
+                                <AlertCircle className="w-4 h-4" />
+                                <span>Not supported</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {bluetoothError && (
+                        <div className="mt-3 p-3 bg-red-50 rounded-lg flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                            <p className="text-sm text-red-600">{bluetoothError}</p>
+                        </div>
+                    )}
+
+                    {!isBluetoothSupported && (
+                        <div className="mt-3 p-3 bg-amber-50 rounded-lg">
+                            <p className="text-xs text-amber-700">
+                                Web Bluetooth requires Chrome/Edge browser and HTTPS connection.
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Goal Selection */}

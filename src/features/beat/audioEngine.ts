@@ -1,4 +1,5 @@
 import type { BeatPattern } from './types'
+import type { BluetoothDrumDevice } from './BluetoothDrumDevice'
 
 export class BeatPlayer {
     private audioContext: AudioContext | null = null
@@ -7,6 +8,7 @@ export class BeatPlayer {
     private isPlaying: boolean = false
     private currentPattern: BeatPattern | null = null
     private beatCount: number = 0
+    private bluetoothDevice: BluetoothDrumDevice | null = null
 
     // Scheduler settings
     private lookahead: number = 25.0 // ms
@@ -14,6 +16,14 @@ export class BeatPlayer {
 
     constructor() {
         // Lazy init
+    }
+
+    /**
+     * Set the Bluetooth device to send commands to
+     * @param device - BluetoothDrumDevice instance or null to disable
+     */
+    setBluetoothDevice(device: BluetoothDrumDevice | null) {
+        this.bluetoothDevice = device
     }
 
     private initContext() {
@@ -32,6 +42,19 @@ export class BeatPlayer {
         this.isPlaying = true
         this.beatCount = 0
         this.nextNoteTime = this.audioContext!.currentTime + 0.05
+
+        // Send Bluetooth commands if device is connected
+        if (this.bluetoothDevice?.isConnected()) {
+            try {
+                await this.bluetoothDevice.sendBpm(pattern.baseBpm)
+                await this.bluetoothDevice.sendStart()
+                console.log('🎵 Bluetooth drum started')
+            } catch (error) {
+                console.error('Failed to start Bluetooth drum:', error)
+                // Continue with audio playback even if Bluetooth fails
+            }
+        }
+
         this.scheduler()
     }
 
@@ -40,6 +63,13 @@ export class BeatPlayer {
         if (this.timerID) {
             window.clearTimeout(this.timerID)
             this.timerID = null
+        }
+
+        // Send Bluetooth stop command if device is connected
+        if (this.bluetoothDevice?.isConnected()) {
+            this.bluetoothDevice.sendStop().catch(error => {
+                console.error('Failed to stop Bluetooth drum:', error)
+            })
         }
     }
 
