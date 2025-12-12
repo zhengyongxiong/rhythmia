@@ -6,13 +6,23 @@ import { useDevice } from '../features/device/DeviceContext'
 import { useLiveMetrics } from '../features/hrv/useLiveMetrics'
 import { usePpgPlayback } from '../hooks/usePpgPlayback'
 import { getVitalStatus, getStatusColorClass, type UserMode } from '../lib/vitalStatus'
-import ppgData from "../data/Subject4F_PPG.json"
 
 export default function LiveMonitorPage() {
     const { isConnected, device } = useDevice()
     const { bpm: bleBpm, hrv: bleHrv } = useLiveMetrics()
 
     const [userMode, setUserMode] = useState<UserMode>('resting')
+    const [ppgSignal, setPpgSignal] = useState<number[]>([])
+
+    // Load PPG data dynamically
+    useEffect(() => {
+        fetch('/data/Subject4F_PPG.json')
+            .then(res => res.json())
+            .then(data => {
+                setPpgSignal((data as { signal: number[] }).signal)
+            })
+            .catch(err => console.error('Failed to load PPG data:', err))
+    }, [])
 
     // New PPG Engine
     const {
@@ -23,13 +33,15 @@ export default function LiveMonitorPage() {
         pnn50: ppgPnn50,
         setIsPlaying,
         debug
-    } = usePpgPlayback((ppgData as { signal: number[] }).signal)
+    } = usePpgPlayback(ppgSignal)
 
     // Auto-play on mount
     useEffect(() => {
-        setIsPlaying(true)
+        if (ppgSignal.length > 0) {
+            setIsPlaying(true)
+        }
         return () => setIsPlaying(false)
-    }, [setIsPlaying])
+    }, [ppgSignal, setIsPlaying])
 
     // Data Prep
     const displayBpm = ppgBpm || bleBpm;
