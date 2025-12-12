@@ -10,10 +10,10 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.png', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'HRV Companion',
-        short_name: 'HRVApp',
+        name: 'Rhythmia',
+        short_name: 'Rhythmia',
         description: 'Real-time Heart Rate Variability Monitor & Trainer',
         theme_color: '#ffffff',
         display: 'standalone',
